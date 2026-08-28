@@ -1,8 +1,5 @@
 # Hermes
 
-<img width="1920" height="1000" alt="Screenshot 2026-08-23 at 13-38-16 Hermes" src="https://github.com/user-attachments/assets/5fcb187c-bcd3-4512-b08e-3fdc7a5c3f82" />
-
-
 A GPS run-tracker that lets other people **spectate your run live** on a map — see your route, distance, elapsed time and pace update as you go, and browse past runs afterwards.
 
 Built on the [DPTechnics Walter](https://www.dptechnics.com/en/products/walter.html) board (ESP32-S3 + Sequans GM02SP cellular modem with built-in GNSS). The device takes a GPS fix, pushes it to a Firebase Realtime Database, and a lightweight web app draws the route on a live map.
@@ -73,21 +70,6 @@ Open `web/index.html` in a browser, or host it (e.g. GitHub Pages). Set `firebas
 ## Firebase security
 
 Writes require Firebase Auth (the device signs in anonymously on boot and attaches its id token to every write); reads are public, since the whole point of Hermes is that anyone can spectate without an account. `firebase/database.rules.json` also validates the shape of what gets written (session points need numeric `lat`/`lon`/`t` in range; nothing else is accepted), so a stray or malicious write can't corrupt a session's data or add arbitrary fields.
-
-## Known limitations
-
-- **v2 cellular firmware is unverified** — written against WalterModem's documented API but not compiled or tested on hardware in this environment. Treat it as a strong starting point, not a working build, until you've flashed and tested it.
-- **Slow first fix on v1** — WiFi-only v1 skips cellular GNSS assistance data, so a cold start outdoors can take a few minutes; later fixes are quicker. v2's cellular connection should make this much faster once verified.
-- **TLS** — the firmware currently skips certificate validation for simplicity (both v1's `WiFiClientSecure::setInsecure()` and v2's `WALTER_MODEM_TLS_VALIDATION_NONE`); pinning/validating the Firebase cert is a future hardening step.
-- **History list cost** — the web app's history panel fetches one small `meta` record per past session to list them; with a very large number of runs this is a lot of small requests. Fine at hobby-project scale; would want pagination or a summary index before that stops being true.
-
-## Roadmap
-
-- [x] **v1 — WiFi:** GNSS fix + stream to live map
-- [x] **Real session history:** each run gets its own session instead of a single live buffer; the web app can list and replay past runs
-- [x] **Lock down Firebase security rules + authenticated writes:** anonymous Firebase Auth on-device, auth-required writes, public read, schema-validated rules
-- [ ] **v2 — Cellular (LTE-M):** firmware written (`firmware/hermes_cellular/`) but needs compiling against a real WalterModem install and testing outdoors on hardware before it's trustworthy
-- [ ] Battery + enclosure for a wearable form factor
 
 ## Tech
 
