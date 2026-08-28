@@ -74,7 +74,3 @@ Writes require Firebase Auth (the device signs in anonymously on boot and attach
 ## Tech
 
 Arduino / C++ · ESP32-S3 · WalterModem · Firebase Realtime Database + Auth · Leaflet · JavaScript
-
-## License
-
-MIT — see [LICENSE](LICENSE).
