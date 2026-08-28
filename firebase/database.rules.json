@@ -1,0 +1,45 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "currentSession": {
+      ".read": true,
+      ".write": "auth != null",
+      ".validate": "newData.isString()"
+    },
+
+    "sessions": {
+      ".read": true,
+      "$sessionId": {
+        ".write": "auth != null",
+
+        "meta": {
+          ".validate": "newData.hasChildren(['start'])",
+          "start": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "$other": { ".validate": false }
+        },
+
+        "points": {
+          "$pointId": {
+            ".validate": "newData.hasChildren(['lat', 'lon', 't'])",
+            "lat": {
+              ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+            },
+            "lon": {
+              ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() > 0"
+            },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

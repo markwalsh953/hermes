@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hermes</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f7f7f7;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: black;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    #mode-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      margin-left: 10px;
+      vertical-align: middle;
+      background: #2ecc71;
+    }
+    #mode-badge.history { background: #ff9800; }
+
+    #history-btn {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #map {
+      flex: 1;
+      border-radius: 12px;
+      margin: 1rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+
+    #distance {
+      position: fixed;
+      bottom: 70px;
+      left: 20px;
+      background: black;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      font-size: 16px;
+      font-weight: 600;
+      z-index: 1000;
+    }
+
+    #session-start, #elapsed, #pace {
+      position: fixed;
+      left: 20px;
+      background: black;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 1000;
+    }
+    #session-start { bottom: 120px; }
+    #elapsed { bottom: 170px; }
+    #pace { bottom: 220px; }
+
+    #legend {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      background: black;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      font-size: 13px;
+      z-index: 1000;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 6px;
+      border: 2px solid #fff;
+    }
+
+    #history-panel {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      width: 240px;
+      max-height: 60vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 1001;
+      display: none;
+    }
+    #history-panel.open { display: block; }
+
+    #history-panel .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #eee;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    #history-panel .panel-header button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: #999;
+    }
+
+    .history-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .history-item:hover { background: #f7f7f7; }
+    .history-item.active { background: #eef7ff; }
+    .history-item .h-date { font-weight: 600; }
+    .history-item .h-stats { color: #777; margin-top: 2px; }
+
+    .history-empty {
+      padding: 14px;
+      font-size: 13px;
+      color: #999;
+    }
+
+    .live-link {
+      display: block;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #2ecc71;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .live-link:hover { background: #f7f7f7; }
+
+    footer {
+      background: black;
+      padding: 0.8rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: white;
+      box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  Hermes
+  <span id="mode-badge">LIVE</span>
+  <button id="history-btn">History</button>
+</header>
+
+<div id="map"></div>
+<div id="pace">Pace: --:-- /km</div>
+<div id="elapsed">Elapsed: 00:00</div>
+<div id="session-start">Session Start: --:--</div>
+<div id="distance">Total Distance: 0.00 km</div>
+
+<div id="legend">
+  <div class="legend-item">
+    <div class="legend-color" style="background:#1e90ff;"></div> Start
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background:#ff4500;"></div> End
+  </div>
+</div>
+
+<div id="history-panel">
+  <div class="panel-header">
+    <span>Past runs</span>
+    <button id="history-close">&times;</button>
+  </div>
+  <div class="live-link" id="back-to-live">&#9679; Back to live</div>
+  <div id="history-list"></div>
+</div>
+
+<footer>
+  Hermes Project 2025
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // Data model: each run is /sessions/{sessionId}/{meta:{start}, points:{pushId:{lat,lon,t}}}.
+  // /currentSession holds the id of the run currently being tracked live.
+  const firebaseBase = 'https://runbuddy-a7459-default-rtdb.europe-west1.firebasedatabase.app';
+
+  const map = L.map('map').setView([53.3, -6.2], 13);
+  // CARTO Voyager basemap (OpenStreetMap data, CDN-served — avoids OSM's
+  // referer/usage-policy blocking of the raw tile.openstreetmap.org tiles).
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+    maxZoom: 20,
+    subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  }).addTo(map);
+
+  let markers = [];
+  let polyline;
+
+  // view state: 'live' follows /currentSession; 'history' shows one fixed past run
+  let viewMode = 'live';
+  let viewSessionId = null;
+
+  // Distance function
+  function haversineDistance(coords1, coords2) {
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const R = 6371e3; // metres
+    const lat1 = toRad(coords1[0]);
+    const lat2 = toRad(coords2[0]);
+    const deltaLat = toRad(coords2[0] - coords1[0]);
+    const deltaLon = toRad(coords2[1] - coords1[1]);
+
+    const a =
+      Math.sin(deltaLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) *
+      Math.sin(deltaLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  // Format a number of seconds as mm:ss (or h:mm:ss for long runs)
+  function fmtDuration(totalSec) {
+    totalSec = Math.round(totalSec);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const mm = String(m).padStart(2, '0');
+    const ss = String(s).padStart(2, '0');
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  }
+
+  // Color interpolation (cold → warm)
+  function interpolateColor(color1, color2, factor) {
+    const c1 = parseInt(color1.slice(1), 16);
+    const c2 = parseInt(color2.slice(1), 16);
+
+    const r1 = (c1 >> 16) & 0xff;
+    const g1 = (c1 >> 8) & 0xff;
+    const b1 = c1 & 0xff;
+
+    const r2 = (c2 >> 16) & 0xff;
+    const g2 = (c2 >> 8) & 0xff;
+    const b2 = c2 & 0xff;
+
+    const r = Math.round(r1 + factor * (r2 - r1));
+    const g = Math.round(g1 + factor * (g2 - g1));
+    const b = Math.round(b1 + factor * (b2 - b1));
+
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // Draw a set of {lat,lon,t} points on the map and update the stat boxes.
+  function renderPoints(pts) {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    const points = pts.map(p => [p.lat, p.lon]);
+
+    if (polyline) map.removeLayer(polyline);
+    if (points.length === 0) return;
+
+    polyline = L.polyline(points, {
+      color: "black",
+      weight: 4,
+      opacity: 0.9,
+      lineJoin: "round"
+    }).addTo(map);
+
+    const startColor = "#1e90ff"; // cold (blue)
+    const endColor = "#ff4500";   // warm (orange-red)
+
+    points.forEach((coords, i) => {
+      const factor = i / (points.length - 1 || 1);
+      const color = interpolateColor(startColor, endColor, factor);
+
+      const icon = L.divIcon({
+        className: "custom-marker",
+        html: `<div style="width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;"></div>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+      });
+
+      markers.push(L.marker(coords, { icon }).addTo(map));
+    });
+
+    map.fitBounds(polyline.getBounds());
+
+    let totalDistance = 0;
+    for (let i = 1; i < points.length; i++) {
+      totalDistance += haversineDistance(points[i - 1], points[i]);
+    }
+    const km = totalDistance / 1000;
+    document.getElementById('distance').innerText = `Total Distance: ${km.toFixed(2)} km`;
+
+    const haveTimes = pts.length > 0 && pts[0].t > 0;
+    const startT = haveTimes ? pts[0].t : null;
+    const endT = haveTimes ? pts[pts.length - 1].t : null;
+    const elapsedSec = haveTimes ? Math.max(0, (endT - startT) / 1000) : 0;
+
+    document.getElementById('session-start').innerText =
+      "Session Start: " + (startT
+        ? new Date(startT).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : "--:--");
+    document.getElementById('elapsed').innerText = "Elapsed: " + fmtDuration(elapsedSec);
+
+    const paceBox = document.getElementById('pace');
+    if (km > 0.02 && elapsedSec > 0) {
+      paceBox.innerText = "Pace: " + fmtDuration(elapsedSec / km) + " /km";
+    } else {
+      paceBox.innerText = "Pace: --:-- /km";
+    }
+  }
+
+  // Parse a raw /sessions/{id}/points.json payload into a sorted point array.
+  function pointsFromPayload(data) {
+    if (!data) return [];
+    return Object.values(data)
+      .filter(p => p && p.lat && p.lon)
+      .map(p => ({ lat: parseFloat(p.lat), lon: parseFloat(p.lon), t: Number(p.t) || 0 }))
+      .sort((a, b) => a.t - b.t);
+  }
+
+  async function fetchJson(path) {
+    const res = await fetch(`${firebaseBase}/${path}`);
+    return res.json();
+  }
+
+  async function updateLive() {
+    try {
+      const currentSessionId = await fetchJson('currentSession.json');
+      if (!currentSessionId) { renderPoints([]); return; }
+      const data = await fetchJson(`sessions/${currentSessionId}/points.json`);
+      renderPoints(pointsFromPayload(data));
+    } catch (err) {
+      console.error('Failed to fetch live data:', err);
+    }
+  }
+
+  async function showHistorySession(sessionId) {
+    viewMode = 'history';
+    viewSessionId = sessionId;
+    document.getElementById('mode-badge').textContent = 'REPLAY';
+    document.getElementById('mode-badge').classList.add('history');
+    document.querySelectorAll('.history-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.sessionId === sessionId);
+    });
+    try {
+      const data = await fetchJson(`sessions/${sessionId}/points.json`);
+      renderPoints(pointsFromPayload(data));
+    } catch (err) {
+      console.error('Failed to fetch session', sessionId, err);
+    }
+  }
+
+  function backToLive() {
+    viewMode = 'live';
+    viewSessionId = null;
+    document.getElementById('mode-badge').textContent = 'LIVE';
+    document.getElementById('mode-badge').classList.remove('history');
+    document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+    updateLive();
+  }
+
+  // List past runs: fetch session ids (shallow) then each run's small meta
+  // record only - avoids pulling every run's full point list just to list them.
+  async function loadHistoryList() {
+    const listEl = document.getElementById('history-list');
+    listEl.innerHTML = '<div class="history-empty">Loading…</div>';
+    try {
+      const ids = await fetchJson('sessions.json?shallow=true');
+      const sessionIds = ids ? Object.keys(ids).sort().reverse() : [];
+      if (sessionIds.length === 0) {
+        listEl.innerHTML = '<div class="history-empty">No past runs yet.</div>';
+        return;
+      }
+
+      const metas = await Promise.all(sessionIds.map(async id => {
+        try {
+          const meta = await fetchJson(`sessions/${id}/meta.json`);
+          return { id, start: meta && meta.start ? meta.start : null };
+        } catch {
+          return { id, start: null };
+        }
+      }));
+
+      listEl.innerHTML = '';
+      metas.forEach(({ id, start }) => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.dataset.sessionId = id;
+        const dateStr = start ? new Date(start).toLocaleString([], {
+          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        }) : `Session ${id}`;
+        item.innerHTML = `<div class="h-date">${dateStr}</div>`;
+        item.addEventListener('click', () => showHistorySession(id));
+        listEl.appendChild(item);
+      });
+    } catch (err) {
+      console.error('Failed to load history list:', err);
+      listEl.innerHTML = '<div class="history-empty">Couldn\'t load history.</div>';
+    }
+  }
+
+  document.getElementById('history-btn').addEventListener('click', () => {
+    const panel = document.getElementById('history-panel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) loadHistoryList();
+  });
+  document.getElementById('history-close').addEventListener('click', () => {
+    document.getElementById('history-panel').classList.remove('open');
+  });
+  document.getElementById('back-to-live').addEventListener('click', backToLive);
+
+  setInterval(() => { if (viewMode === 'live') updateLive(); }, 15000);
+  updateLive();
+</script>
+
+</body>
+</html>
